@@ -62,17 +62,17 @@ void sda_main(DataType inputArr[N2], DataType outputArr[N2]){
 	DataType id_hat = 0, iq_hat = 0;
 
 
-	const DataType k1 = (DataType)5209.23913;		// k1 = 3*p*p/2/J/4*Lambdam ;
-	const DataType k2 = (DataType)29.117647;			// k2 = B_value/J ;
-	const DataType k3 = (DataType)3836.31713;		// k3 = p/2/J ;
-	const DataType k4 = (DataType)78.125;			// k4 = Rs/Lq ;
-	const DataType k5 = (DataType)9.4296875;			// k5 = Lambdam/Lq ;
-	const DataType k6 = (DataType)31.25;				// k6 = 1/Lq ;
-	const DataType k7 = (DataType)138.8888889;		// k7 = Rs/Ld ;
-	const DataType k8 = (DataType)55.55555566;		// k8 = 1/Ld ;
-	const DataType k9 = (DataType)1.777777778;		// k9 = Lq/Ld ;
-	const DataType k10 = (DataType)0.5625;			// k10 = Ld/Lq ;
-	const DataType k11 = (DataType)-241.68797953;	// k11 = 3*p*p/2/J/4*(Ld-Lq) ;
+	const DataType k1  = (DataType)0.8295;       // k1  = (3*p*lambda_m)/(2*J*wb) * (Ib/Ib) normalized
+	const DataType k2  = (DataType)2.9118;       // k2  = B/J (Mechanical damping ratio)
+	const DataType k3  = (DataType)0.6109;       // k3  = (p*Ib)/(2*J*wb) torque-to-speed coefficient
+	const DataType k4  = (DataType)78.1250;      // k4  = R/Lq (Electrical time constant Q)
+	const DataType k5  = (DataType)592.1844;     // k5  = (lambda_m*wb)/Vb / (Lq*Ib/Vb) back-EMF term
+	const DataType k6  = (DataType)558.8125;     // k6  = Vb/(Lq*Ib) reciprocal of normalized Lq
+	const DataType k7  = (DataType)138.8889;     // k7  = R/Ld (Electrical time constant D)
+	const DataType k8  = (DataType)993.4444;     // k8  = Vb/(Ld*Ib) reciprocal of normalized Ld
+	const DataType k9  = (DataType)1116.4;       // k9  = Lq/Ld ratio scaled by base values
+	const DataType k10 = (DataType)353.2500;     // k10 = Ld/Lq ratio scaled by base values
+	const DataType k11 = (DataType)-3.8485;      // k11 = Reluctance torque coefficient
 	const DataType k12 = (DataType)-0.0463960;		// k12 = (Ld-Lq)/Lambdam ;
 			
 //////////////////////	input  //////////////////////
@@ -100,7 +100,7 @@ void sda_main(DataType inputArr[N2], DataType outputArr[N2]){
 
 
 	DataType sqrt_delta = hls::sqrtf((DataType)delta);
-	iq_hat = hls::cbrt( (DataType)-1/q - sqrt_delta) + hls::cbrt((DataType)-1/q + sqrt_delta);
+	iq_hat = hls::cbrt( (DataType)-q/2 - sqrt_delta) + hls::cbrt((DataType)-q/2 + sqrt_delta);
 	id_hat = k12*iq_hat*iq_hat;
 
 	state_error[0] = omega - omega_hat;
@@ -113,18 +113,22 @@ void sda_main(DataType inputArr[N2], DataType outputArr[N2]){
 
 	#pragma HLS ARRAY_PARTITION variable=state_error type=complete
 	
-	//    G = B*inv(R)*Transpose(B)
+	//    G = B*inv(R)*B'
+	//    B =   [       0         0
+	//	 		 558.8125         0
+	//					0  993.4444]
+	//    R = diag([30, 30])
     DataType G[3][3] = {{(DataType)0,        (DataType)0,          (DataType)0},
-					 {(DataType)0, (DataType)976562.5,          (DataType)0},
-					 {(DataType)0,        (DataType)0, (DataType)3086419.75}};
+					 {(DataType)0, 			(DataType)1041,          (DataType)0},
+					 {(DataType)0,       	 (DataType)0, 			(DataType)3290}};
 	
-	//	invR*Bc_T
+	//	invR*B'
 	const DataType u_temp[2][3] = {{(DataType)0, (DataType)-31250.0,           (DataType)0},
 							   	{(DataType)0,        (DataType)0, (DataType)-55555.5556}};
 	
-	DataType Q[3][3] = {{(DataType)1, (DataType)0, (DataType)0},
-					 {(DataType)0, (DataType)5, (DataType)0},
-					 {(DataType)0, (DataType)0, (DataType)5}};      //Qc
+	DataType Q[3][3] = {{(DataType)5000, (DataType)0, (DataType)0},
+					 {(DataType)0, (DataType)10, (DataType)0},
+					 {(DataType)0, (DataType)0, (DataType)10}};      //Qc
 	
 
 	// Ar_con = Ar = A-r*I
@@ -278,8 +282,8 @@ void sda_main(DataType inputArr[N2], DataType outputArr[N2]){
 	///////////////////////////The above is the Controller///////////////////////////
 	///////////////////////////The above is the Controller///////////////////////////
 
-	Saturate(Vq, (DataType)0.3, (DataType)-0.3, Vq);
-	Saturate(Vd, (DataType)0.1, (DataType)-0.1, Vd);
+	Saturate(Vq, (DataType)1.1, (DataType)-1.1, Vq);
+	Saturate(Vd, (DataType)1.1, (DataType)-1.1, Vd);
 
 	outputArr[0] = Vq;
 	outputArr[1] = Vd;
