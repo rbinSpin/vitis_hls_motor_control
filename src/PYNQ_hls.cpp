@@ -1,78 +1,79 @@
 #include "PYNQ_hls_settings.h"
 #include "matrix_ops.h"
-#include "hls_stream.h"
-#include <math.h>
-#include <hls_math.h>   // hls::sqrt / hls::fxp_sqrt / hls::sqrtf
 
-template <typename T> void sda_main(T inputArr[N2], T outputArr[N2])
-{
+
+#include <hls_math.h>   // hls::sqrt / hls::fxp_sqrt / hls::sqrtf
+#include "ap_fixed.h"
+#include "hls_math.h"
+
+void sda_main(DataType inputArr[N2], DataType outputArr[N2]){
 	const int r = 925;
   const int step = 6;
 
-  float As[3][3] = {0};
-  float Gs[3][3] = {0};
-  float Hs[3][3] = {0};
+  DataType As[3][3] = {0};
+  DataType Gs[3][3] = {0};
+  DataType Hs[3][3] = {0};
 	
-  float Init_Var1[3][3] = {0};
-  float Init_Var2[3][3] = {0};
-  float Init_Var3[3][3] = {0};
-	float Init_Var4[3][3] = {0};
-	float tempM1[3][3] = {0};
-  float tempM2[3][3] = {0};
-	float tempM3[3][3] = {0};
-	float As_new[3][3] = {0};
-	float GsHs[3][3] = {0};
-	float IGsHs[3][3] = {0};
-	float As_T_Hs[3][3] = {0};
-	float As_T[3][3] = {0};
-	float Gs_new_temp[3][3] = {0};
-	float Gs_new[3][3] = {0};
-	float G_inv_T_Ar[3][3] = {0};
-	float inv_Ar_T_Q[3][3] = {0};
-	float Hs_new_temp[3][3] = {0};
-	float Hs_new[3][3] = {0};
-	float Ar[3][3] = {0};
-	float Ar_T[3][3] = {0};
-	float As_new_temp[3][3] = {0};
+  DataType Init_Var1[3][3] = {0};
+  DataType Init_Var2[3][3] = {0};
+  DataType Init_Var3[3][3] = {0};
+	DataType Init_Var4[3][3] = {0};
+	DataType tempM1[3][3] = {0};
+  DataType tempM2[3][3] = {0};
+	DataType tempM3[3][3] = {0};
+	DataType As_new[3][3] = {0};
+	DataType GsHs[3][3] = {0};
+	DataType IGsHs[3][3] = {0};
+	DataType As_T_Hs[3][3] = {0};
+	DataType As_T[3][3] = {0};
+	DataType Gs_new_temp[3][3] = {0};
+	DataType Gs_new[3][3] = {0};
+	DataType G_inv_T_Ar[3][3] = {0};
+	DataType inv_Ar_T_Q[3][3] = {0};
+	DataType Hs_new_temp[3][3] = {0};
+	DataType Hs_new[3][3] = {0};
+	DataType Ar[3][3] = {0};
+	DataType Ar_T[3][3] = {0};
+	DataType As_new_temp[3][3] = {0};
 
-	float Var1[3][3] = {0};
-	float Var2[3][3] = {0};
+	DataType Var1[3][3] = {0};
+	DataType Var2[3][3] = {0};
 	
-	float Identity_3d[3][3] = {{1,0,0},
-							   {0,1,0},
-							   {0,0,1}};
-	float Identity_4d[4][4] = {{1,0,0,0},
-							   {0,1,0,0},
-							   {0,0,1,0},
-							   {0,0,0,1}};
+	DataType Identity_3d[3][3] = {{ (DataType)1, (DataType)0, (DataType)0},
+							   { (DataType)0, (DataType)1, (DataType)0},
+							   { (DataType)0, (DataType)0, (DataType)1}};
+	DataType Identity_4d[4][4] = {{ (DataType)1, (DataType)0, (DataType)0, (DataType)0},
+							   { (DataType)0, (DataType)1, (DataType)0, (DataType)0},
+							   { (DataType)0, (DataType)0, (DataType)1, (DataType)0},
+							   { (DataType)0, (DataType)0, (DataType)0, (DataType)1}};
 
 
-	const float Ld = 0.018;             // Inductance of motor [H]
-	const float Lq = 0.032;             // Inductance of motor [H]
+	const DataType Ld = 0.018;             // Inductance of motor [H]
+	const DataType Lq = 0.032;             // Inductance of motor [H]
 
-	float T_e = 0 , omega_hat = 0;
-	float omega = 0, iq = 0, id = 0;
-	float Vq = 0, Vd = 0;
+	DataType T_e = 0 , omega_hat = 0;
+	DataType omega = 0, iq = 0, id = 0;
+	DataType Vq = 0, Vd = 0;
 
-	float u[2][3] = {0};
+	DataType u[2][3] = {0};
 
-	float state_error[3] = {0,0,0};
+	DataType state_error[3] = {0,0,0};
 
-	float id_hat = 0, iq_hat = 0;
+	DataType id_hat = 0, iq_hat = 0;
 
 
-	const float k1 = 5209.23913;		// k1 = 3*p*p/2/J/4*Lambdam ;
-	const float k2 = 29.117647;			// k2 = B_value/J ;
-	const float k3 = 3836.31713;		// k3 = p/2/J ;
-	const float k4 = 78.125;			// k4 = Rs/Lq ;
-	const float k5 = 9.4296875;			// k5 = Lambdam/Lq ;
-	const float k6 = 31.25;				// k6 = 1/Lq ;
-	const float k7 = 138.8888889;		// k7 = Rs/Ld ;
-	const float k8 = 55.55555566;		// k8 = 1/Ld ;
-	const float k9 = 1.777777778;		// k9 = Lq/Ld ;
-	const float k10 = 0.5625;			// k10 = Ld/Lq ;
-	const float k11 = -241.68797953;	// k11 = 3*p*p/2/J/4*(Ld-Lq) ;
-	const float k12 = -0.0463960;		// k12 = (Ld-Lq)/Lambdam ;
+	const DataType k1 = (DataType)5209.23913;		// k1 = 3*p*p/2/J/4*Lambdam ;
+	const DataType k2 = (DataType)29.117647;			// k2 = B_value/J ;
+	const DataType k3 = (DataType)3836.31713;		// k3 = p/2/J ;
+	const DataType k4 = (DataType)78.125;			// k4 = Rs/Lq ;
+	const DataType k5 = (DataType)9.4296875;			// k5 = Lambdam/Lq ;
+	const DataType k6 = (DataType)31.25;				// k6 = 1/Lq ;
+	const DataType k7 = (DataType)138.8888889;		// k7 = Rs/Ld ;
+	const DataType k8 = (DataType)55.55555566;		// k8 = 1/Ld ;
+	const DataType k9 = (DataType)1.777777778;		// k9 = Lq/Ld ;
+	const DataType k10 = (DataType)0.5625;			// k10 = Ld/Lq ;
+	const DataType k11 = (DataType)-241.68797953;	// k11 = 3*p*p/2/J/4*(Ld-Lq) ;
+	const DataType k12 = (DataType)-0.0463960;		// k12 = (Ld-Lq)/Lambdam ;
 			
 //////////////////////	input  //////////////////////
 	T_e = inputArr[0];
@@ -91,11 +92,15 @@ template <typename T> void sda_main(T inputArr[N2], T outputArr[N2])
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 //                    	MTPA
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-	const float p = 464.556906;             // p = Lambdam**2/(Ld-Lq)**2 ;
-	float q = -342.120181406 * T_e;   // q = ((-4*Lambdam)/(3*poles(Ld-Lq)**2)) * T_e ;
-	float delta = hls::powrf(q/2,2) + hls::powrf(p/3,3);
+	const DataType p = (DataType)464.556906;             // p = Lambdam**2/(Ld-Lq)**2 ;
+	DataType q = (DataType)-342.120181406 * T_e;   // q = ((-4*Lambdam)/(3*poles(Ld-Lq)**2)) * T_e ;
+	DataType temp_q = q/(DataType)2;
+	DataType temp_p = p/(DataType)3;
+	DataType delta = (temp_q*temp_q) + (temp_p*temp_p*temp_p);
 
-	iq_hat = hls::powrf(-1/q - hls::sqrtf(delta), 1.0f/3.0f) + hls::powrf(-1/q + hls::sqrtf(delta), 1.0f/3.0f);;
+
+	DataType sqrt_delta = hls::sqrtf((DataType)delta);
+	iq_hat = hls::cbrt( (DataType)-1/q - sqrt_delta) + hls::cbrt((DataType)-1/q + sqrt_delta);
 	id_hat = k12*iq_hat*iq_hat;
 
 	state_error[0] = omega - omega_hat;
@@ -109,17 +114,17 @@ template <typename T> void sda_main(T inputArr[N2], T outputArr[N2])
 	#pragma HLS ARRAY_PARTITION variable=state_error type=complete
 	
 	//    G = B*inv(R)*Transpose(B)
-    float G[3][3] = {{0,        0,          0},
-					 {0, 976562.5,          0},
-					 {0,        0, 3086419.75}};
+    DataType G[3][3] = {{(DataType)0,        (DataType)0,          (DataType)0},
+					 {(DataType)0, (DataType)976562.5,          (DataType)0},
+					 {(DataType)0,        (DataType)0, (DataType)3086419.75}};
 	
 	//	invR*Bc_T
-	const float u_temp[2][3] = {{0, -31250.0,           0},
-							   	{0,        0, -55555.5556}};
+	const DataType u_temp[2][3] = {{(DataType)0, (DataType)-31250.0,           (DataType)0},
+							   	{(DataType)0,        (DataType)0, (DataType)-55555.5556}};
 	
-	float Q[3][3] = {{1, 0, 0},
-					 {0, 5, 0},
-					 {0, 0, 5}};      //Qc
+	DataType Q[3][3] = {{(DataType)1, (DataType)0, (DataType)0},
+					 {(DataType)0, (DataType)5, (DataType)0},
+					 {(DataType)0, (DataType)0, (DataType)5}};      //Qc
 	
 
 	// Ar_con = Ar = A-r*I
@@ -243,7 +248,7 @@ template <typename T> void sda_main(T inputArr[N2], T outputArr[N2])
 //#pragma HLS UNROLL
 		for(int j=0; j < 3 ; j++)        //3 times
 		{
-			float temp = 0;
+				DataType temp = 0;
 			for(int k=0; k < 3 ; k++)    //3 times
 			{
 				temp += u_temp[i][k]*Hs[k][j];
@@ -254,11 +259,11 @@ template <typename T> void sda_main(T inputArr[N2], T outputArr[N2])
 //	Multiply_3d(u_temp, Hs, u);
 
 #pragma HLS ARRAY_PARTITION variable=u type=complete
-	float Vs[2];
+	DataType Vs[2];
 
 	for(int i=0; i<2; i++)
 	{
-		float temp = 0;
+			DataType temp = 0;
 		for(int j=0;j<3;j++)
 		{
 			temp += u[i][j]*state_error[j];
@@ -273,60 +278,13 @@ template <typename T> void sda_main(T inputArr[N2], T outputArr[N2])
 	///////////////////////////The above is the Controller///////////////////////////
 	///////////////////////////The above is the Controller///////////////////////////
 
-	Saturate(Vq, 0.3, -0.3, Vq);
-	Saturate(Vd, 0.1, -0.1, Vd);
+	Saturate(Vq, (DataType)0.3, (DataType)-0.3, Vq);
+	Saturate(Vd, (DataType)0.1, (DataType)-0.1, Vd);
 
 	outputArr[0] = Vq;
 	outputArr[1] = Vd;
 
 	return;
+
 }
 
-
-
-
-extern "C" {
-	void Riccati_Solver(hls::stream<axis_t> &in, hls::stream<axis_t> &out) {
-//	#pragma HLS INTERFACE s_axilite port = return bundle = control
-	#pragma HLS INTERFACE ap_ctrl_none port = return
-	#pragma HLS INTERFACE axis port = in
-	#pragma HLS INTERFACE axis port = out
-
-	  DataType l_A[N2];
-	  DataType l_C[N2];
-
-	#pragma HLS ARRAY_PARTITION variable = l_A factor = 16 dim = 1 cyclic
-	#pragma HLS ARRAY_PARTITION variable = l_C factor = 16 dim = 1 cyclic
-
-	  int j_limit = 16; // 512 / DataTypeSize
-	  converter_t converter_load[16];
-	  converter_t converter_write[16];
-
-	load_A:
-		axis_t temp = in.read();
-		for(int j = 0; j < j_limit; j++) {
-			#pragma HLS UNROLL
-			int high = j * DataTypeSize + DataTypeSize - 1;
-			int low = j * DataTypeSize;
-
-			converter_load[j].i = temp.data.range(high, low);
-			l_A[j] = converter_load[j].d;
-		}
-
-		sda_main<DataType>(l_A, l_C);
-
-	writeC:
-		axis_t W_temp;
-		for(int j = 0; j < j_limit; j++) {
-			#pragma HLS UNROLL
-			int high = j * DataTypeSize + DataTypeSize - 1;
-			int low = j * DataTypeSize;
-			converter_write[j].d = l_C[j];
-			W_temp.data.range(high, low) = converter_write[j].i;
-		}
-
-		W_temp.last = 1;
-		W_temp.keep = -1; // enabling all bytes
-		out.write(W_temp);
-	}
-}

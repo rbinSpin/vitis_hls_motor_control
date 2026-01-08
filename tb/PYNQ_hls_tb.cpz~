@@ -2,7 +2,7 @@
 #include <fstream>
 #include <cmath>
 #include <iomanip>
-#include "../PYNQ_hls_settings.h"
+#include "../src/PYNQ_hls_settings.h"
 
 // 真真 (真真 Matlab 真)
 struct SimParam {

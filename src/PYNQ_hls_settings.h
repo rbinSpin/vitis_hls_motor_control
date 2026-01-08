@@ -1,28 +1,16 @@
 #ifndef _PYNQ_HLS_SETTINGS_
 #define _PYNQ_HLS_SETTINGS_
 
-#include "ap_axi_sdata.h"
-#include "ap_int.h"
-#include <inttypes.h>
+#include "ap_int.h" // For ap_fixed
+#include <inttypes.h> // For any potential integer types needed
 
 #define N 4
 #define N2 16 // N*N
 
-#define DWIDTH 512
-typedef ap_axiu<DWIDTH, 0, 0, 0> axis_t;
-typedef float DataType;
+typedef ap_fixed<34, 14, AP_TRN, AP_SAT> DataType;
 
-const int DataTypeSize = sizeof(DataType) * 8;
+const int DataTypeSize = 34;
 
-typedef union converter {
-  DataType d;
-  uint32_t i;
-} converter_t;
-
-template <typename T> void sda_main(T a[N2], T c[N2]);
-
-extern "C" {
-    void Riccati_Solver(hls::stream<axis_t> &, hls::stream<axis_t> &);
-}
+void sda_main(DataType a[N2], DataType c[N2]);
 
 #endif
