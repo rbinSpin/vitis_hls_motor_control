@@ -1,0 +1,7 @@
+# Ignore the entire imp directory
+imp/
+
+# Standard Vitis HLS ignores
+*.log
+*.jou
+*.str
